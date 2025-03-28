@@ -409,7 +409,7 @@
         const messageDisplay = document.getElementById('message');
         const hintButton = document.getElementById('hint-btn');
         const restartButton = document.getElementById('restart-btn');
-
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         // Datos del juego
         const gameData = {
             // Nivel 1: Completar palabra con sílabas faltantes
@@ -1480,200 +1480,248 @@
             }
         }
 
-        // Nivel 10: Pupiletras
-        function loadLevel10() {
-            const words = gameData.level10.words;
-            const gridSize = gameData.level10.gridSize;
+        // Nivel 10: Pupiletras (versión móvil compatible)
+function loadLevel10() {
+    const words = gameData.level10.words;
+    const gridSize = gameData.level10.gridSize;
+    
+    // Crear matriz vacía
+    const grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+    
+    // Colocar palabras en la matriz
+    words.forEach(word => {
+        let placed = false;
+        while (!placed) {
+            const direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+            const row = Math.floor(Math.random() * (direction === 'horizontal' ? gridSize : gridSize - word.length));
+            const col = Math.floor(Math.random() * (direction === 'vertical' ? gridSize : gridSize - word.length));
             
-            // Crear matriz vacía
-            const grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
-            
-            // Colocar palabras en la matriz
-            words.forEach(word => {
-                let placed = false;
-                while (!placed) {
-                    const direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-                    const row = Math.floor(Math.random() * (direction === 'horizontal' ? gridSize : gridSize - word.length));
-                    const col = Math.floor(Math.random() * (direction === 'vertical' ? gridSize : gridSize - word.length));
-                    
-                    // Verificar si se puede colocar la palabra
-                    let canPlace = true;
-                    for (let i = 0; i < word.length; i++) {
-                        const r = direction === 'horizontal' ? row : row + i;
-                        const c = direction === 'vertical' ? col : col + i;
-                        
-                        if (grid[r][c] !== '' && grid[r][c] !== word[i]) {
-                            canPlace = false;
-                            break;
-                        }
-                    }
-                    
-                    // Colocar la palabra si es posible
-                    if (canPlace) {
-                        for (let i = 0; i < word.length; i++) {
-                            const r = direction === 'horizontal' ? row : row + i;
-                            const c = direction === 'vertical' ? col : col + i;
-                            grid[r][c] = word[i];
-                        }
-                        placed = true;
-                    }
-                }
-            });
-            
-            // Rellenar espacios vacíos con letras aleatorias
-            for (let i = 0; i < gridSize; i++) {
-                for (let j = 0; j < gridSize; j++) {
-                    if (grid[i][j] === '') {
-                        grid[i][j] = String.fromCharCode(97 + Math.floor(Math.random() * 26));
-                    }
+            // Verificar si se puede colocar la palabra
+            let canPlace = true;
+            for (let i = 0; i < word.length; i++) {
+                const r = direction === 'horizontal' ? row : row + i;
+                const c = direction === 'vertical' ? col : col + i;
+                
+                if (grid[r][c] !== '' && grid[r][c] !== word[i]) {
+                    canPlace = false;
+                    break;
                 }
             }
             
-            currentLevelData = {
-                grid: grid,
-                words: words,
-                foundWords: [],
-                selectedCells: []
-            };
-            
-            const levelHTML = `
-                <h2>Pupiletras</h2>
-                <p>Encuentra las palabras en la sopa de letras</p>
-                <div class="word-search" id="word-grid">
-                    ${grid.map((row, rowIndex) => 
-                        row.map((cell, colIndex) => `
-                            <div class="word-search-cell" data-row="${rowIndex}" data-col="${colIndex}">${cell}</div>
-                        `).join('')
-                    ).join('')}
-                </div>
-                <div class="word-list">
-                    <p>Palabras a encontrar:</p>
-                    ${words.map(word => `
-                        <div class="word-list-item" data-word="${word}">${word}</div>
-                    `).join('')}
-                </div>
-            `;
-            
-            levelContainer.innerHTML = levelHTML;
-            
-            // Variables para selección de celdas
-            let isSelecting = false;
-            let startCell = null;
-            
-            // Event listeners para las celdas
-            const cells = document.querySelectorAll('.word-search-cell');
-            cells.forEach(cell => {
-                cell.addEventListener('mousedown', function(e) {
-                    isSelecting = true;
-                    startCell = this;
-                    currentLevelData.selectedCells = [this];
-                    this.classList.add('selected');
-                    e.preventDefault(); // Evitar selección de texto
-                });
-                
-                cell.addEventListener('mouseenter', function() {
-                    if (isSelecting && startCell !== this) {
-                        clearSelection();
-                        selectCellsBetween(startCell, this);
-                    }
-                });
-                
-                cell.addEventListener('mouseup', function() {
-                    if (isSelecting) {
-                        isSelecting = false;
-                        checkSelectedWord();
-                    }
-                });
-            });
-            
-            // Permitir soltar el mouse fuera de la celda
-            document.addEventListener('mouseup', function() {
-                if (isSelecting) {
-                    isSelecting = false;
-                    checkSelectedWord();
+            // Colocar la palabra si es posible
+            if (canPlace) {
+                for (let i = 0; i < word.length; i++) {
+                    const r = direction === 'horizontal' ? row : row + i;
+                    const c = direction === 'vertical' ? col : col + i;
+                    grid[r][c] = word[i];
                 }
-            });
-            
-            function clearSelection() {
-                cells.forEach(c => c.classList.remove('selected'));
-                currentLevelData.selectedCells = [];
-            }
-            
-            function selectCellsBetween(cell1, cell2) {
-                const row1 = parseInt(cell1.dataset.row);
-                const col1 = parseInt(cell1.dataset.col);
-                const row2 = parseInt(cell2.dataset.row);
-                const col2 = parseInt(cell2.dataset.col);
-                
-                // Solo seleccionar en línea recta (horizontal, vertical o diagonal)
-                if (row1 !== row2 && col1 !== col2 && Math.abs(row1 - row2) !== Math.abs(col1 - col2)) {
-                    return;
-                }
-                
-                const rowStep = row1 === row2 ? 0 : (row1 < row2 ? 1 : -1);
-                const colStep = col1 === col2 ? 0 : (col1 < col2 ? 1 : -1);
-                
-                let row = row1;
-                let col = col1;
-                
-                while (true) {
-                    const cell = document.querySelector(`.word-search-cell[data-row="${row}"][data-col="${col}"]`);
-                    cell.classList.add('selected');
-                    currentLevelData.selectedCells.push(cell);
-                    
-                    if (row === row2 && col === col2) break;
-                    
-                    row += rowStep;
-                    col += colStep;
-                }
-            }
-            
-            function checkSelectedWord() {
-                if (currentLevelData.selectedCells.length < 2) {
-                    clearSelection();
-                    return;
-                }
-                
-                const selectedWord = currentLevelData.selectedCells.map(cell => cell.textContent).join('').toLowerCase();
-                const reversedWord = selectedWord.split('').reverse().join('');
-                
-                // Verificar si la palabra seleccionada está en la lista
-                let foundWord = null;
-                for (const word of currentLevelData.words) {
-                    if (!currentLevelData.foundWords.includes(word) && 
-                        (selectedWord === word.toLowerCase() || reversedWord === word.toLowerCase())) {
-                        foundWord = word;
-                        break;
-                    }
-                }
-                
-                if (foundWord) {
-                    // Palabra encontrada
-                    currentLevelData.foundWords.push(foundWord);
-                    currentLevelData.selectedCells.forEach(cell => {
-                        cell.classList.remove('selected');
-                        cell.classList.add('found');
-                    });
-                    
-                    // Marcar palabra en la lista
-                    document.querySelector(`.word-list-item[data-word="${foundWord}"]`).classList.add('found');
-                    
-                    score += 100;
-                    showMessage(`¡Encontraste "${foundWord}"!`, "success");
-                    
-                    // Verificar si se encontraron todas las palabras
-                    if (currentLevelData.foundWords.length === currentLevelData.words.length) {
-                        showMessage("¡Todas las palabras encontradas!", "success");
-                        setTimeout(() => nextLevel(), 1500);
-                    }
-                } else {
-                    // Palabra incorrecta
-                    showMessage("Palabra no encontrada en la lista", "error");
-                    clearSelection();
-                }
+                placed = true;
             }
         }
-
+    });
+    
+    // Rellenar espacios vacíos con letras aleatorias
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            if (grid[i][j] === '') {
+                grid[i][j] = String.fromCharCode(97 + Math.floor(Math.random() * 26));
+            }
+        }
+    }
+    
+    currentLevelData = {
+        grid: grid,
+        words: words,
+        foundWords: [],
+        selectedCells: []
+    };
+    
+    const levelHTML = `
+        <h2>Pupiletras</h2>
+        <p>Encuentra las palabras en la sopa de letras</p>
+        <div class="word-search" id="word-grid">
+            ${grid.map((row, rowIndex) => 
+                row.map((cell, colIndex) => `
+                    <div class="word-search-cell" data-row="${rowIndex}" data-col="${colIndex}">${cell}</div>
+                `).join('')
+            ).join('')}
+        </div>
+        <div class="word-list">
+            <p>Palabras a encontrar:</p>
+            ${words.map(word => `
+                <div class="word-list-item" data-word="${word}">${word}</div>
+            `).join('')}
+        </div>
+    `;
+    
+    levelContainer.innerHTML = levelHTML;
+    
+    // Detectar si es un dispositivo táctil
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // Variables para selección de celdas
+    let isSelecting = false;
+    let startCell = null;
+    
+    // Event listeners para las celdas
+    const cells = document.querySelectorAll('.word-search-cell');
+    const gridElement = document.getElementById('word-grid');
+    
+    // Función para manejar el inicio de selección
+    function handleSelectionStart(cell) {
+        isSelecting = true;
+        startCell = cell;
+        currentLevelData.selectedCells = [cell];
+        cell.classList.add('selected');
+    }
+    
+    // Función para manejar la selección continua
+    function handleSelectionMove(cell) {
+        if (isSelecting && startCell !== cell) {
+            clearSelection();
+            selectCellsBetween(startCell, cell);
+        }
+    }
+    
+    // Función para manejar el fin de selección
+    function handleSelectionEnd() {
+        if (isSelecting) {
+            isSelecting = false;
+            checkSelectedWord();
+        }
+    }
+    
+    // Añadir event listeners según el tipo de dispositivo
+    if (isTouchDevice) {
+        // Eventos para dispositivos táctiles
+        cells.forEach(cell => {
+            cell.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                handleSelectionStart(this);
+            });
+            
+            cell.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && element.classList.contains('word-search-cell')) {
+                    handleSelectionMove(element);
+                }
+            }, {passive: false});
+        });
+        
+        document.addEventListener('touchend', function(e) {
+            handleSelectionEnd();
+        });
+    } else {
+        // Eventos para mouse
+        cells.forEach(cell => {
+            cell.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                handleSelectionStart(this);
+            });
+            
+            cell.addEventListener('mouseenter', function() {
+                handleSelectionMove(this);
+            });
+        });
+        
+        document.addEventListener('mouseup', function() {
+            handleSelectionEnd();
+        });
+    }
+    
+    function clearSelection() {
+        cells.forEach(c => c.classList.remove('selected'));
+        currentLevelData.selectedCells = [];
+    }
+    
+    function selectCellsBetween(cell1, cell2) {
+        const row1 = parseInt(cell1.dataset.row);
+        const col1 = parseInt(cell1.dataset.col);
+        const row2 = parseInt(cell2.dataset.row);
+        const col2 = parseInt(cell2.dataset.col);
+        
+        // Solo seleccionar en línea recta (horizontal, vertical o diagonal)
+        if (row1 !== row2 && col1 !== col2 && Math.abs(row1 - row2) !== Math.abs(col1 - col2)) {
+            return;
+        }
+        
+        const rowStep = row1 === row2 ? 0 : (row1 < row2 ? 1 : -1);
+        const colStep = col1 === col2 ? 0 : (col1 < col2 ? 1 : -1);
+        
+        let row = row1;
+        let col = col1;
+        
+        while (true) {
+            const cell = document.querySelector(`.word-search-cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) break;
+            
+            cell.classList.add('selected');
+            currentLevelData.selectedCells.push(cell);
+            
+            if (row === row2 && col === col2) break;
+            
+            row += rowStep;
+            col += colStep;
+        }
+    }
+    
+    function checkSelectedWord() {
+        if (currentLevelData.selectedCells.length < 2) {
+            clearSelection();
+            return;
+        }
+        
+        const selectedWord = currentLevelData.selectedCells.map(cell => cell.textContent).join('').toLowerCase();
+        const reversedWord = selectedWord.split('').reverse().join('');
+        
+        // Verificar si la palabra seleccionada está en la lista
+        let foundWord = null;
+        for (const word of currentLevelData.words) {
+            if (!currentLevelData.foundWords.includes(word) && 
+                (selectedWord === word.toLowerCase() || reversedWord === word.toLowerCase())) {
+                foundWord = word;
+                break;
+            }
+        }
+        
+        if (foundWord) {
+            // Palabra encontrada
+            currentLevelData.foundWords.push(foundWord);
+            currentLevelData.selectedCells.forEach(cell => {
+                cell.classList.remove('selected');
+                cell.classList.add('found');
+            });
+            
+            // Marcar palabra en la lista
+            document.querySelector(`.word-list-item[data-word="${foundWord}"]`).classList.add('found');
+            
+            score += 100;
+            showMessage(`¡Encontraste "${foundWord}"!`, "success");
+            
+            // Verificar si se encontraron todas las palabras
+            if (currentLevelData.foundWords.length === currentLevelData.words.length) {
+                showMessage("¡Todas las palabras encontradas!", "success");
+                setTimeout(() => nextLevel(), 1500);
+            }
+        } else {
+            // Palabra incorrecta
+            showMessage("Palabra no encontrada en la lista", "error");
+            clearSelection();
+        }
+    }
+    
+    // Ajustar tamaño de celdas para móviles
+    if (window.innerWidth <= 768) {
+        const cellSize = Math.min(30, Math.floor(window.innerWidth * 0.8 / gridSize));
+        document.querySelectorAll('.word-search-cell').forEach(cell => {
+            cell.style.width = `${cellSize}px`;
+            cell.style.height = `${cellSize}px`;
+            cell.style.fontSize = `${cellSize * 0.6}px`;
+        });
+    }
+}
         // Pasar al siguiente nivel
         function nextLevel() {
             if (currentLevel < 10) {
